@@ -1,0 +1,208 @@
+# Lab Exercises
+
+The exercises performed in this lab, step by step.
+
+---
+
+## Exercise 1: Network Scanning
+
+**Goal:** Discover what services are running on the target.
+
+### Step 1: Start Wireshark on Ubuntu
+1. Open Wireshark
+2. Click on `ens33` interface
+3. Capture starts automatically
+
+### Step 2: Run Scan from Kali
+```bash
+nmap 192.168.115.129
+```
+
+**Output:**
+```
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+```
+
+### Step 3: Aggressive Scan
+```bash
+nmap -A 192.168.115.129
+```
+
+**Output:**
+```
+22/tcp open  ssh     OpenSSH 9.6p1 Ubuntu
+80/tcp open  http    Apache httpd 2.4.58 ((Ubuntu))
+Running: Linux 5.X
+```
+
+### Step 4: View in Wireshark
+Filter: `ip.addr == 192.168.115.128`
+
+You'll see:
+- SYN packets (Kali scanning)
+- RST packets (closed ports)
+- SYN-ACK packets (open ports)
+
+---
+
+## Exercise 2: Firewall Defense
+
+**Goal:** Block the attacker using firewall rules.
+
+### Step 1: Reset and Configure UFW
+```bash
+sudo ufw reset
+sudo ufw enable
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw deny from 192.168.115.128
+sudo ufw allow 22
+sudo ufw allow 80
+sudo ufw status numbered
+```
+
+### Step 2: Test from Kali
+```bash
+nmap 192.168.115.129
+```
+
+**Output:**
+```
+All 1000 scanned ports are in ignored states.
+Not shown: 1000 filtered tcp ports (no-response)
+Scanned in 21.34 seconds
+```
+
+Attacker is blocked!
+
+### Step 3: Remove Block (for next exercise)
+```bash
+sudo ufw status numbered
+sudo ufw delete 1
+```
+
+---
+
+## Exercise 3: Brute Force Attack & Fail2Ban
+
+**Goal:** Simulate password attack, then implement automatic defense.
+
+### Step 1: Create Password List on Kali
+```bash
+nano passwords.txt
+```
+
+Add:
+```
+password
+123456
+admin
+root
+ubuntu
+letmein
+qwerty
+abc123
+password123
+```
+
+Save: `Ctrl+O`, Enter, `Ctrl+X`
+
+### Step 2: Run Attack
+```bash
+hydra -l ronit -P passwords.txt 192.168.115.129 ssh
+```
+
+### Step 3: Check Logs on Ubuntu
+```bash
+sudo cat /var/log/auth.log | grep -i failed
+```
+
+**Output:**
+```
+Failed password for ronit from 192.168.115.128 port 45748 ssh2
+Failed password for ronit from 192.168.115.128 port 45750 ssh2
+Failed password for ronit from 192.168.115.128 port 45754 ssh2
+...
+```
+
+### Step 4: Install Fail2Ban
+```bash
+sudo apt install fail2ban -y
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+```
+
+### Step 5: Attack Again
+```bash
+hydra -l ronit -P passwords.txt 192.168.115.129 ssh
+```
+
+**Output:**
+```
+[ERROR] could not connect to ssh://192.168.115.129:22 - Connection refused
+```
+
+Fail2Ban blocked the attacker!
+
+### Step 6: Verify Ban
+```bash
+sudo fail2ban-client status sshd
+```
+
+**Output:**
+```
+Banned IP list:   192.168.115.128
+```
+
+### Step 7: Unban (if needed for retesting)
+```bash
+sudo fail2ban-client set sshd unbanip 192.168.115.128
+```
+
+---
+
+## Exercise 4: SSH Remote Access
+
+**Goal:** Connect remotely from Kali to Ubuntu using SSH.
+
+### Step 1: Connect via SSH
+```bash
+ssh ronit@192.168.115.129
+```
+
+### Step 2: Accept Host Key (first time only)
+```
+The authenticity of host '192.168.115.129' can't be established.
+Are you sure you want to continue connecting (yes/no)? yes
+```
+
+### Step 3: Enter Password
+Type the Ubuntu account password (no characters will display).
+
+### Result
+Once authenticated, the Kali terminal connects directly to the Ubuntu shell — demonstrating how SSH (port 22) provides full remote command-line access.
+
+---
+
+## Troubleshooting Notes
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "All ports filtered" on rescan | UFW still blocking from Exercise 2 | `sudo ufw delete <rule#>` |
+| Hydra "Connection refused" | Fail2Ban banned the IP | `sudo fail2ban-client set sshd unbanip <ip>` |
+| "No route to host" on SSH | Target VM was off/unreachable | Confirm VM is running, re-check IP with `ip a` |
+| "Connection closed" after password | Fail2Ban triggered mid-attempt | Unban IP, retry |
+
+---
+
+## Summary
+
+| Exercise | Attack Tool | Defense Tool | Result |
+|----------|-------------|--------------|--------|
+| 1 | Nmap | Wireshark | Detected scan traffic |
+| 2 | Nmap | UFW | Blocked all ports |
+| 3 | Hydra | Fail2Ban | Auto-blocked attacker |
+| 4 | SSH | Auth + Fail2Ban | Verified secure remote access |
+
