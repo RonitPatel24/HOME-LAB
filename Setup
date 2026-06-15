@@ -1,0 +1,85 @@
+# Lab Setup Guide
+
+Complete steps to build this lab from scratch.
+
+## Requirements
+
+- Computer with 8GB+ RAM
+- VMware Workstation Player (free)
+- Kali Linux VM image
+- Ubuntu ISO
+
+## Step 1: Create Virtual Machines
+
+### Ubuntu VM
+1. Open VMware → Create New VM
+2. Select Ubuntu ISO
+3. Set 4GB RAM, 25GB disk
+4. Install Ubuntu, create username and password
+5. Restart when done
+
+### Kali VM
+1. Download from kali.org (VMware version)
+2. File → Open → Select Kali .vmx file
+3. Login: `kali` / `kali`
+
+## Step 2: Check Network
+
+### On Ubuntu
+```bash
+ip a
+```
+Note your IP (example: 192.168.115.129)
+
+### On Kali
+```bash
+ip a
+```
+Note your IP (example: 192.168.115.128)
+
+### Test Connection
+```bash
+ping 192.168.115.129
+```
+
+## Step 3: Install Tools on Ubuntu
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install web server
+sudo apt install apache2 -y
+
+# Install SSH server
+sudo apt install openssh-server -y
+
+# Install Wireshark
+sudo apt install wireshark -y
+sudo usermod -aG wireshark $USER
+
+# Install firewall
+sudo apt install ufw -y
+
+# Restart
+sudo reboot
+```
+
+## Step 4: Configure Firewall
+
+```bash
+sudo ufw enable
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22
+sudo ufw allow 80
+sudo ufw status
+```
+
+## Lab Ready!
+
+| Machine | IP | Role |
+|---------|-----|------|
+| Ubuntu | 192.168.115.129 | Defender |
+| Kali | 192.168.115.128 | Attacker |
+
